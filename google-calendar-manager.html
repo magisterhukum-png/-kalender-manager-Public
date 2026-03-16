@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalender Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #16161a;
+    --surface2: #1e1e24;
+    --border: #2a2a35;
+    --accent: #7c6af7;
+    --accent2: #e8845c;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --success: #5ecb8f;
+    --danger: #e8605c;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    padding: 28px 40px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 1;
+  }
+
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--accent); }
+
+  #authBtn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s;
+  }
+  #authBtn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+  #userInfo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  #userInfo img {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+  }
+  #signOutBtn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  #signOutBtn:hover { border-color: var(--danger); color: var(--danger); }
+
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Left panel - Form */
+  .panel-form {
+    padding: 32px;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+  }
+
+  .panel-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .panel-title .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  input, textarea, select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+  }
+  input[type="color"] {
+    padding: 6px;
+    height: 44px;
+    cursor: pointer;
+  }
+  textarea { resize: vertical; min-height: 80px; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .checkbox-group input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .checkbox-group span { font-size: 14px; color: var(--text); }
+
+  #submitBtn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), #9c8bf8);
+    color: #fff;
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 4px 20px rgba(124,106,247,0.3);
+  }
+  #submitBtn:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 6px 28px rgba(124,106,247,0.4); }
+  #submitBtn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 14px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    z-index: 999;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+    opacity: 0;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.success { border-color: var(--success); }
+  .toast.error { border-color: var(--danger); }
+
+  /* Right panel - Events */
+  .panel-events {
+    padding: 32px;
+    overflow-y: auto;
+  }
+
+  .events-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  #refreshBtn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #refreshBtn:hover { border-color: var(--accent); color: var(--accent); }
+
+  #eventsList { display: flex; flex-direction: column; gap: 12px; }
+
+  .event-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 4px 1fr auto;
+    gap: 14px;
+    align-items: start;
+    transition: border-color 0.2s, transform 0.15s;
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .event-card:hover { border-color: #3a3a50; transform: translateX(3px); }
+
+  .event-color-bar {
+    border-radius: 4px;
+    align-self: stretch;
+    min-height: 40px;
+  }
+
+  .event-info {}
+  .event-title {
+    font-weight: 500;
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+  .event-time {
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .event-desc {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .event-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .btn-icon {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .btn-icon:hover { border-color: var(--danger); color: var(--danger); }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-state p { font-size: 14px; }
+
+  .lock-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(13,13,15,0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+  }
+  .lock-overlay .lock-icon { font-size: 52px; }
+  .lock-overlay p { color: var(--muted); font-size: 15px; text-align: center; max-width: 260px; line-height: 1.6; }
+
+  /* Setup modal */
+  .modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(6px);
+  }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px;
+    max-width: 520px;
+    width: 90%;
+    position: relative;
+  }
+  .modal h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    margin-bottom: 12px;
+  }
+  .modal p { color: var(--muted); font-size: 14px; line-height: 1.7; margin-bottom: 16px; }
+  .modal ol { color: var(--muted); font-size: 14px; line-height: 1.9; padding-left: 20px; margin-bottom: 20px; }
+  .modal ol li { margin-bottom: 4px; }
+  .modal a { color: var(--accent); text-decoration: none; }
+  .modal a:hover { text-decoration: underline; }
+  .modal input {
+    margin-bottom: 12px;
+    font-size: 13px;
+    font-family: 'Courier New', monospace;
+  }
+  .modal-btns { display: flex; gap: 10px; }
+  .btn-primary {
+    flex: 1;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-secondary {
+    flex: 1;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 12px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  .badge {
+    display: inline-block;
+    background: rgba(124,106,247,0.15);
+    color: var(--accent);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--muted);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 768px) {
+    main { grid-template-columns: 1fr; }
+    .panel-form { border-right: none; border-bottom: 1px solid var(--border); }
+    header { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Setup Modal -->
+<div class="modal-bg" id="setupModal">
+  <div class="modal">
+    <h2>⚙️ Setup Google API</h2>
+    <p>Untuk menggunakan aplikasi ini, kamu perlu Client ID dari Google Cloud Console. Lakukan sekali saja, lalu simpan.</p>
+    <ol>
+      <li>Buka <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a></li>
+      <li>Buat project baru atau pilih yang sudah ada</li>
+      <li>Aktifkan <strong>Google Calendar API</strong></li>
+      <li>Buat <strong>OAuth 2.0 Client ID</strong> (tipe: Web Application)</li>
+      <li>Tambahkan <strong>origin file HTML ini</strong> ke Authorized JavaScript Origins<br>
+        <span style="font-size:12px;color:var(--muted)">(jika buka dari file lokal, gunakan: <code style="color:var(--accent)">http://localhost</code> atau deploy ke hosting)</span>
+      </li>
+      <li>Salin Client ID dan paste di bawah</li>
+    </ol>
+    <label>Client ID Google OAuth 2.0</label>
+    <input type="text" id="clientIdInput" placeholder="xxxxx.apps.googleusercontent.com">
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="skipSetup()">Lewati (sudah tersimpan)</button>
+      <button class="btn-primary" onclick="saveClientId()">Simpan & Mulai</button>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="logo">Kalender<span>Manager</span></div>
+  <div id="authArea">
+    <button id="authBtn" onclick="handleAuth()">🔗 Hubungkan Google Calendar</button>
+    <div id="userInfo" style="display:none">
+      <img id="userAvatar" src="" alt="">
+      <span id="userName"></span>
+      <button id="signOutBtn" onclick="handleSignOut()">Keluar</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- Lock overlay -->
+  <div class="lock-overlay" id="lockOverlay">
+    <div class="lock-icon">🔐</div>
+    <p>Hubungkan Google Calendar kamu untuk mulai mengelola event</p>
+  </div>
+
+  <!-- Form Panel -->
+  <div class="panel-form">
+    <div class="panel-title"><div class="dot"></div> Tambah Event Baru</div>
+
+    <div class="form-group">
+      <label>Judul Event *</label>
+      <input type="text" id="evTitle" placeholder="Contoh: Meeting Tim Marketing">
+    </div>
+
+    <div class="form-group">
+      <label>Deskripsi</label>
+      <textarea id="evDesc" placeholder="Agenda, link meeting, atau catatan lain..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Lokasi / Link</label>
+      <input type="text" id="evLocation" placeholder="Contoh: Ruang Rapat A / meet.google.com/xxx">
+    </div>
+
+    <div class="form-group">
+      <div class="checkbox-group">
+        <input type="checkbox" id="allDay" onchange="toggleAllDay()">
+        <span>Seharian (All Day)</span>
+      </div>
+    </div>
+
+    <div class="row-2" id="dateTimeGroup">
+      <div class="form-group">
+        <label>Tanggal Mulai *</label>
+        <input type="date" id="evStartDate">
+      </div>
+      <div class="form-group">
+        <label>Jam Mulai *</label>
+        <input type="time" id="evStartTime" value="09:00">
+      </div>
+    </div>
+
+    <div class="row-2" id="endDateTimeGroup">
+      <div class="form-group">
+        <label>Tanggal Selesai</label>
+        <input type="date" id="evEndDate">
+      </div>
+      <div class="form-group">
+        <label>Jam Selesai</label>
+        <input type="time" id="evEndTime" value="10:00">
+      </div>
+    </div>
+
+    <div class="row-2">
+      <div class="form-group">
+        <label>Pengingat (menit sebelum)</label>
+        <select id="evReminder">
+          <option value="0">Tidak ada</option>
+          <option value="10">10 menit</option>
+          <option value="30" selected>30 menit</option>
+          <option value="60">1 jam</option>
+          <option value="1440">1 hari</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Warna Event</label>
+        <select id="evColor">
+          <option value="">Default</option>
+          <option value="1">Lavender 💜</option>
+          <option value="2">Sage 🌿</option>
+          <option value="3">Grape 🍇</option>
+          <option value="4">Flamingo 🦩</option>
+          <option value="5">Banana 🍌</option>
+          <option value="6">Tangerine 🍊</option>
+          <option value="7">Peacock 🦚</option>
+          <option value="8">Graphite ⬛</option>
+          <option value="9">Blueberry 🫐</option>
+          <option value="10">Basil 🌱</option>
+          <option value="11">Tomato 🍅</option>
+        </select>
+      </div>
+    </div>
+
+    <button id="submitBtn" onclick="addEvent()" disabled>+ Tambah ke Google Calendar</button>
+  </div>
+
+  <!-- Events Panel -->
+  <div class="panel-events">
+    <div class="events-header">
+      <div class="panel-title" style="margin-bottom:0;padding-bottom:0;border:none">
+        <div class="dot" style="background:var(--accent2);box-shadow:0 0 12px var(--accent2)"></div>
+        Event Mendatang
+      </div>
+      <button id="refreshBtn" onclick="loadEvents()">
+        <span id="refreshIcon">↻</span> Refresh
+      </button>
+    </div>
+    <div id="eventsList">
+      <div class="empty-state">
+        <div class="icon">📅</div>
+        <p>Hubungkan akun Google kamu untuk melihat event</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<!-- Google APIs -->
+<script src="https://accounts.google.com/gsi/client" async></script>
+
+<script>
+const SCOPES = 'https://www.googleapis.com/auth/calendar';
+const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
+
+let tokenClient;
+let gapiInited = false;
+let gisInited = false;
+let CLIENT_ID = localStorage.getItem('gcal_client_id') || '';
+
+// ── Init ──────────────────────────────────────────────
+window.onload = () => {
+  if (CLIENT_ID) {
+    document.getElementById('setupModal').style.display = 'none';
+    initApis();
+  } else {
+    const saved = localStorage.getItem('gcal_client_id');
+    if (saved) {
+      CLIENT_ID = saved;
+      document.getElementById('setupModal').style.display = 'none';
+      initApis();
+    }
+  }
+
+  // Set default tanggal hari ini
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('evStartDate').value = today;
+  document.getElementById('evEndDate').value = today;
+};
+
+function saveClientId() {
+  const val = document.getElementById('clientIdInput').value.trim();
+  if (!val || !val.includes('.apps.googleusercontent.com')) {
+    showToast('❌ Client ID tidak valid', 'error'); return;
+  }
+  CLIENT_ID = val;
+  localStorage.setItem('gcal_client_id', val);
+  document.getElementById('setupModal').style.display = 'none';
+  initApis();
+}
+
+function skipSetup() {
+  if (!CLIENT_ID) { showToast('❌ Belum ada Client ID tersimpan', 'error'); return; }
+  document.getElementById('setupModal').style.display = 'none';
+  initApis();
+}
+
+function initApis() {
+  // Load GAPI
+  const script = document.createElement('script');
+  script.src = 'https://apis.google.com/js/api.js';
+  script.onload = gapiLoaded;
+  document.head.appendChild(script);
+}
+
+function gapiLoaded() {
+  gapi.load('client', async () => {
+    await gapi.client.init({
+      discoveryDocs: [DISCOVERY_DOC],
+    });
+    gapiInited = true;
+    maybeEnableButton();
+  });
+}
+
+// GIS callback (called by google accounts script)
+function gisLoaded() {}
+
+window.addEventListener('load', () => {
+  // Wait for google accounts script
+  const check = setInterval(() => {
+    if (window.google && window.google.accounts && CLIENT_ID) {
+      clearInterval(check);
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: (resp) => {
+          if (resp.error) { showToast('❌ Login gagal: ' + resp.error, 'error'); return; }
+          onSignIn();
+        },
+      });
+      gisInited = true;
+      maybeEnableButton();
+    }
+  }, 300);
+});
+
+function maybeEnableButton() {
+  if (gapiInited && gisInited) {
+    document.getElementById('authBtn').disabled = false;
+  }
+}
+
+// ── Auth ──────────────────────────────────────────────
+function handleAuth() {
+  if (!tokenClient) { showToast('⏳ API belum siap, tunggu sebentar...', ''); return; }
+  if (gapi.client.getToken() === null) {
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  } else {
+    tokenClient.requestAccessToken({ prompt: '' });
+  }
+}
+
+function onSignIn() {
+  document.getElementById('authBtn').style.display = 'none';
+  document.getElementById('userInfo').style.display = 'flex';
+  document.getElementById('lockOverlay').style.display = 'none';
+  document.getElementById('submitBtn').disabled = false;
+
+  // Get user info
+  fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: 'Bearer ' + gapi.client.getToken().access_token }
+  }).then(r => r.json()).then(u => {
+    document.getElementById('userName').textContent = u.name;
+    document.getElementById('userAvatar').src = u.picture;
+  });
+
+  loadEvents();
+}
+
+function handleSignOut() {
+  const token = gapi.client.getToken();
+  if (token) {
+    google.accounts.oauth2.revoke(token.access_token);
+    gapi.client.setToken('');
+  }
+  document.getElementById('authBtn').style.display = 'block';
+  document.getElementById('userInfo').style.display = 'none';
+  document.getElementById('lockOverlay').style.display = 'flex';
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('eventsList').innerHTML = `
+    <div class="empty-state"><div class="icon">📅</div><p>Hubungkan akun Google kamu untuk melihat event</p></div>`;
+}
+
+// ── All Day Toggle ────────────────────────────────────
+function toggleAllDay() {
+  const allDay = document.getElementById('allDay').checked;
+  document.getElementById('evStartTime').disabled = allDay;
+  document.getElementById('evEndTime').disabled = allDay;
+  document.getElementById('evStartTime').style.opacity = allDay ? '0.4' : '1';
+  document.getElementById('evEndTime').style.opacity = allDay ? '0.4' : '1';
+}
+
+// ── Add Event ────────────────────────────────────────
+async function addEvent() {
+  const title = document.getElementById('evTitle').value.trim();
+  const desc = document.getElementById('evDesc').value.trim();
+  const location = document.getElementById('evLocation').value.trim();
+  const allDay = document.getElementById('allDay').checked;
+  const startDate = document.getElementById('evStartDate').value;
+  const startTime = document.getElementById('evStartTime').value;
+  const endDate = document.getElementById('evEndDate').value || startDate;
+  const endTime = document.getElementById('evEndTime').value;
+  const reminder = parseInt(document.getElementById('evReminder').value);
+  const color = document.getElementById('evColor').value;
+
+  if (!title) { showToast('❌ Judul event tidak boleh kosong', 'error'); return; }
+  if (!startDate) { showToast('❌ Tanggal mulai harus diisi', 'error'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Menambahkan...';
+
+  let event = {
+    summary: title,
+    description: desc || undefined,
+    location: location || undefined,
+  };
+
+  if (allDay) {
+    const endDateAllDay = new Date(endDate);
+    endDateAllDay.setDate(endDateAllDay.getDate() + 1);
+    event.start = { date: startDate };
+    event.end = { date: endDateAllDay.toISOString().split('T')[0] };
+  } else {
+    event.start = { dateTime: `${startDate}T${startTime}:00`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone };
+    event.end = { dateTime: `${endDate}T${endTime}:00`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone };
+  }
+
+  if (reminder > 0) {
+    event.reminders = { useDefault: false, overrides: [{ method: 'popup', minutes: reminder }] };
+  }
+
+  if (color) event.colorId = color;
+
+  try {
+    await gapi.client.calendar.events.insert({ calendarId: 'primary', resource: event });
+    showToast('✅ Event berhasil ditambahkan!', 'success');
+    clearForm();
+    loadEvents();
+  } catch (e) {
+    showToast('❌ Gagal: ' + (e.result?.error?.message || 'Coba lagi'), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '+ Tambah ke Google Calendar';
+  }
+}
+
+function clearForm() {
+  document.getElementById('evTitle').value = '';
+  document.getElementById('evDesc').value = '';
+  document.getElementById('evLocation').value = '';
+  document.getElementById('evStartTime').value = '09:00';
+  document.getElementById('evEndTime').value = '10:00';
+  document.getElementById('allDay').checked = false;
+  toggleAllDay();
+}
+
+// ── Load Events ───────────────────────────────────────
+const colorMap = {
+  '1':'#7986cb','2':'#33b679','3':'#8e24aa','4':'#e67c73',
+  '5':'#f6c026','6':'#f5511d','7':'#039be5','8':'#616161',
+  '9':'#3f51b5','10':'#0b8043','11':'#d50000',
+  '':'#7c6af7'
+};
+
+async function loadEvents() {
+  const icon = document.getElementById('refreshIcon');
+  icon.style.animation = 'spin 0.6s linear infinite';
+
+  try {
+    const now = new Date().toISOString();
+    const res = await gapi.client.calendar.events.list({
+      calendarId: 'primary',
+      timeMin: now,
+      maxResults: 20,
+      singleEvents: true,
+      orderBy: 'startTime',
+    });
+
+    const events = res.result.items;
+    const list = document.getElementById('eventsList');
+
+    if (!events || events.length === 0) {
+      list.innerHTML = `<div class="empty-state"><div class="icon">🎉</div><p>Tidak ada event mendatang</p></div>`;
+      return;
+    }
+
+    list.innerHTML = events.map(ev => {
+      const start = ev.start.dateTime || ev.start.date;
+      const end = ev.end.dateTime || ev.end.date;
+      const color = colorMap[ev.colorId || ''] || colorMap[''];
+      const isAllDay = !ev.start.dateTime;
+
+      let timeStr;
+      if (isAllDay) {
+        const d = new Date(start + 'T00:00:00');
+        timeStr = d.toLocaleDateString('id-ID', { weekday:'short', day:'numeric', month:'short', year:'numeric' }) + ' · Seharian';
+      } else {
+        const s = new Date(start);
+        const e = new Date(end);
+        timeStr = s.toLocaleDateString('id-ID', { weekday:'short', day:'numeric', month:'short' })
+          + ' · ' + s.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' })
+          + ' – ' + e.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+      }
+
+      return `
+        <div class="event-card">
+          <div class="event-color-bar" style="background:${color}"></div>
+          <div class="event-info">
+            <div class="event-title">${escHtml(ev.summary || '(Tanpa Judul)')}</div>
+            <div class="event-time">📅 ${timeStr}</div>
+            ${ev.location ? `<div class="event-desc">📍 ${escHtml(ev.location)}</div>` : ''}
+            ${ev.description ? `<div class="event-desc">📝 ${escHtml(ev.description.substring(0,80))}${ev.description.length>80?'…':''}</div>` : ''}
+          </div>
+          <div class="event-actions">
+            <button class="btn-icon" title="Hapus event" onclick="deleteEvent('${ev.id}', this)">🗑️</button>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    showToast('❌ Gagal memuat event', 'error');
+  } finally {
+    icon.style.animation = '';
+  }
+}
+
+async function deleteEvent(id, btn) {
+  if (!confirm('Hapus event ini dari Google Calendar?')) return;
+  btn.textContent = '⏳';
+  try {
+    await gapi.client.calendar.events.delete({ calendarId: 'primary', eventId: id });
+    showToast('🗑️ Event dihapus', 'success');
+    loadEvents();
+  } catch (e) {
+    showToast('❌ Gagal menghapus event', 'error');
+    btn.textContent = '🗑️';
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (type || '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>
